@@ -7,14 +7,16 @@ import numpy as np
 import tf_util
 
 
-class Model():
+class Model(tf.keras.Model):
 
     def __init__(self, action_dim, state_dim, layers=[60, 40]):
+
+        super(Model, self).__init__()
         self._action_dim = action_dim
         self._state_dim = state_dim
 
         previous_dim = self._state_dim
-        self.weights = []
+        self.__weights = []
         self.biases = []
         self.activations = []
         for i, layer in enumerate(layers):
@@ -22,7 +24,7 @@ class Model():
                     shape=[previous_dim, layer],
                     name=f'w{i}',
                     initializer=tf.contrib.layers.xavier_initializer())
-            self.weights.append(w)
+            self.__weights.append(w)
             b = tf.get_variable(dtype=tf.float32,
                     shape=[layer],
                     name=f'b{i}',
@@ -35,7 +37,7 @@ class Model():
                 shape=[previous_dim, self._action_dim],
                 name=f'w{len(layers)}',
                 initializer=tf.contrib.layers.xavier_initializer())
-        self.weights.append(w)
+        self.__weights.append(w)
         b = tf.get_variable(dtype=tf.float32,
                 shape=[self._action_dim],
                 name=f'b{len(layers)}',
@@ -43,13 +45,13 @@ class Model():
         self.biases.append(b)
         self.activations.append(tf.math.sigmoid)
 
-        self.variables = self.weights + self.biases
+        self.my_variables = self.__weights + self.biases
 
-    def __call__(self, states_placeholder, training=True):
+    def call(self, states_placeholder, training=True):
         previous_layer = states_placeholder.astype(np.float32)
-        for i, (weight, bias, activation) in enumerate(zip(self.weights, self.biases, self.activations)):
+        for i, (weight, bias, activation) in enumerate(zip(self.__weights, self.biases, self.activations)):
             previous_layer = tf.matmul(previous_layer, weight) + bias
-            if i < len(self.weights) - 1:
+            if i < len(self.__weights) - 1:
                 previous_layer = tf.layers.batch_normalization(previous_layer, training=training)
                 previous_layer = tf.layers.dropout(previous_layer, rate=0.5)
             if activation is not None:
@@ -67,8 +69,8 @@ def train(model, inputs, outputs, optimizer):
     with tf.control_dependencies(update_ops):
         with tf.GradientTape() as t:
             current_loss = loss(model(inputs), outputs)
-    grads = t.gradient(current_loss, model.variables)
-    optimizer.apply_gradients(zip(grads, model.variables),
+    grads = t.gradient(current_loss, model.my_variables)
+    optimizer.apply_gradients(zip(grads, model.my_variables),
             global_step=tf.train.get_or_create_global_step())
     return (current_loss, grads)
 
