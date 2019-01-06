@@ -16,7 +16,7 @@ class Model(tf.keras.Model):
         self._state_dim = state_dim
 
         previous_dim = self._state_dim
-        self.__weights = []
+        self.mlp_weights = []
         self.biases = []
         self.activations = []
         for i, layer in enumerate(layers):
@@ -24,12 +24,14 @@ class Model(tf.keras.Model):
                     shape=[previous_dim, layer],
                     name=f'w{i}',
                     initializer=tf.contrib.layers.xavier_initializer())
-            self.__weights.append(w)
+            self.mlp_weights.append(w)
+            setattr(self, f'w{i}', w)
             b = tf.get_variable(dtype=tf.float32,
                     shape=[layer],
                     name=f'b{i}',
                     initializer=tf.constant_initializer(0.))
             self.biases.append(b)
+            setattr(self, f'b{i}', b)
             self.activations.append(tf.nn.relu)
             previous_dim = layer
 
@@ -37,21 +39,21 @@ class Model(tf.keras.Model):
                 shape=[previous_dim, self._action_dim],
                 name=f'w{len(layers)}',
                 initializer=tf.contrib.layers.xavier_initializer())
-        self.__weights.append(w)
+        self.mlp_weights.append(w)
+        setattr(self, f'w{len(layers)}', w)
         b = tf.get_variable(dtype=tf.float32,
                 shape=[self._action_dim],
                 name=f'b{len(layers)}',
                 initializer=tf.constant_initializer(0.))
         self.biases.append(b)
+        setattr(self, f'b{len(layers)}', b)
         self.activations.append(tf.math.sigmoid)
-
-        self.my_variables = self.__weights + self.biases
 
     def call(self, states_placeholder, training=True):
         previous_layer = states_placeholder.astype(np.float32)
-        for i, (weight, bias, activation) in enumerate(zip(self.__weights, self.biases, self.activations)):
+        for i, (weight, bias, activation) in enumerate(zip(self.mlp_weights, self.biases, self.activations)):
             previous_layer = tf.matmul(previous_layer, weight) + bias
-            if i < len(self.__weights) - 1:
+            if i < len(self.mlp_weights) - 1:
                 previous_layer = tf.layers.batch_normalization(previous_layer, training=training)
                 previous_layer = tf.layers.dropout(previous_layer, rate=0.5)
             if activation is not None:
@@ -63,14 +65,15 @@ class Model(tf.keras.Model):
 
 def loss(predicted_y, desired_y):
     return tf.reduce_mean(tf.square(predicted_y - desired_y))
+    #return tf.losses.huber_loss(desired_y, predicted_y)
 
 def train(model, inputs, outputs, optimizer):
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     with tf.control_dependencies(update_ops):
         with tf.GradientTape() as t:
             current_loss = loss(model(inputs), outputs)
-    grads = t.gradient(current_loss, model.my_variables)
-    optimizer.apply_gradients(zip(grads, model.my_variables),
+    grads = t.gradient(current_loss, model.variables)
+    optimizer.apply_gradients(zip(grads, model.variables),
             global_step=tf.train.get_or_create_global_step())
     return (current_loss, grads)
 
