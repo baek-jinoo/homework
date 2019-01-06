@@ -13,40 +13,37 @@ class Model():
         self._action_dim = action_dim
         self._state_dim = state_dim
 
-        self._first_weight_dim = layers[0]
-        w1 = tf.get_variable(dtype=tf.float32,
-                shape=[self._state_dim, self._first_weight_dim],
-                name='w1',
-                initializer=tf.contrib.layers.xavier_initializer())
-        b1 = tf.get_variable(dtype=tf.float32,
-                shape=[self._first_weight_dim],
-                name='b1',
-                initializer=tf.constant_initializer(0.))
+        previous_dim = self._state_dim
+        self.weights = []
+        self.biases = []
+        self.activations = []
+        for i, layer in enumerate(layers):
+            w = tf.get_variable(dtype=tf.float32,
+                    shape=[previous_dim, layer],
+                    name=f'w{i}',
+                    initializer=tf.contrib.layers.xavier_initializer())
+            self.weights.append(w)
+            b = tf.get_variable(dtype=tf.float32,
+                    shape=[layer],
+                    name=f'b{i}',
+                    initializer=tf.constant_initializer(0.))
+            self.biases.append(b)
+            self.activations.append(tf.nn.relu)
+            previous_dim = layer
 
-        self._second_weight_dim = layers[1]
-        w2 = tf.get_variable(dtype=tf.float32,
-                shape=[self._first_weight_dim, self._second_weight_dim],
-                name='w2',
+        w = tf.get_variable(dtype=tf.float32,
+                shape=[previous_dim, self._action_dim],
+                name=f'w{len(layers)}',
                 initializer=tf.contrib.layers.xavier_initializer())
-        b2 = tf.get_variable(dtype=tf.float32,
-                shape=[self._second_weight_dim],
-                name='b2',
+        self.weights.append(w)
+        b = tf.get_variable(dtype=tf.float32,
+                shape=[self._action_dim],
+                name=f'b{len(layers)}',
                 initializer=tf.constant_initializer(0.))
+        self.biases.append(b)
+        self.activations.append(tf.math.sigmoid)
 
-        self._third_weight_dim = self._action_dim
-        w3 = tf.get_variable(dtype=tf.float32,
-                shape=[self._second_weight_dim, self._third_weight_dim],
-                name='w3',
-                initializer=tf.contrib.layers.xavier_initializer())
-        b3 = tf.get_variable(dtype=tf.float32,
-                shape=[self._third_weight_dim],
-                name='b3',
-                initializer=tf.constant_initializer(0.))
-
-        self.weights = [w1, w2, w3]
-        self.biases = [b1, b2, b3]
-        self.variables = [w1, w2, w3, b1, b2, b3]
-        self.activations = [tf.nn.relu, tf.nn.relu, tf.math.sigmoid]
+        self.variables = self.weights + self.biases
 
     def __call__(self, states_placeholder):
         previous_layer = states_placeholder.astype(np.float32)
@@ -99,11 +96,12 @@ def main():
     action_dim = actions.shape[-1]
     state_dim = observations.shape[-1]
 
-    model = Model(action_dim, state_dim, layers=[200, 100])
-    optimizer = tf.train.AdamOptimizer()
+    model = Model(action_dim, state_dim, layers=[400, 200, 100])
+    optimizer = tf.train.AdamOptimizer(learning_rate=1e-5)
 
-    batch_size = 512
-    training_steps = 10000
+    batch_size = 2048
+    training_steps = 20000
+    losses = []
     for training_step in range(training_steps):
         indices = np.random.randint(observations.shape[0], size=batch_size)
         batch_actions = actions[indices]
@@ -111,7 +109,8 @@ def main():
         inputs = batch_observations
         outputs = batch_actions
         loss, _ = train(model, inputs, outputs, optimizer)
-        if training_step % 10 == 0:
+        losses.append(loss.numpy())
+        if training_step % 100 == 0:
             print(f'{training_step} loss:', loss.numpy())
 
 if __name__ == '__main__':
