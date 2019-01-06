@@ -46,7 +46,7 @@ class Model(tf.keras.Model):
                 initializer=tf.constant_initializer(0.))
         self.biases.append(b)
         setattr(self, f'b{len(layers)}', b)
-        self.activations.append(tf.math.sigmoid)
+        self.activations.append(None)
 
     def call(self, states_placeholder, training=True):
         previous_layer = states_placeholder.astype(np.float32)
