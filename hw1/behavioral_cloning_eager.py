@@ -45,10 +45,12 @@ class Model():
 
         self.variables = self.weights + self.biases
 
-    def __call__(self, states_placeholder):
+    def __call__(self, states_placeholder, training=True):
         previous_layer = states_placeholder.astype(np.float32)
-        for weight, bias, activation in zip(self.weights, self.biases, self.activations):
+        for i, (weight, bias, activation) in enumerate(zip(self.weights, self.biases, self.activations)):
             previous_layer = tf.matmul(previous_layer, weight) + bias
+            if i < len(self.weights) - 1:
+                previous_layer = tf.layers.batch_normalization(previous_layer, training=training)
             if activation is not None:
                 previous_layer = activation(previous_layer)
 
@@ -60,8 +62,10 @@ def loss(predicted_y, desired_y):
     return tf.reduce_mean(tf.square(predicted_y - desired_y))
 
 def train(model, inputs, outputs, optimizer):
-    with tf.GradientTape() as t:
-        current_loss = loss(model(inputs), outputs)
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    with tf.control_dependencies(update_ops):
+        with tf.GradientTape() as t:
+            current_loss = loss(model(inputs), outputs)
     grads = t.gradient(current_loss, model.variables)
     optimizer.apply_gradients(zip(grads, model.variables),
             global_step=tf.train.get_or_create_global_step())
@@ -100,7 +104,7 @@ def main():
     optimizer = tf.train.AdamOptimizer(learning_rate=1e-5)
 
     batch_size = 2048
-    training_steps = 20000
+    training_steps = 12000
     losses = []
     for training_step in range(training_steps):
         indices = np.random.randint(observations.shape[0], size=batch_size)
