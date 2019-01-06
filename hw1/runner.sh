@@ -5,5 +5,6 @@ set -eux
 
 e='Hopper-v2'
 #pipenv run python run_expert.py experts/$e.pkl $e --num_rollouts=3
-pipenv run python behavioral_cloning.py $e
+#pipenv run python behavioral_cloning.py $e
+pipenv run python behavioral_cloning_eager.py $e
 

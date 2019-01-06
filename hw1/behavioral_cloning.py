@@ -4,11 +4,12 @@ import pickle
 import argparse
 import os
 import numpy as np
+import tf_util
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('envname', type=str)
-    #parser.add_argument(
+    parser.add_argument('--verbose', action='store_true')
 
     args = parser.parse_args()
 
@@ -20,11 +21,11 @@ def main():
 
     if expert_data is None:
         raise Exception('Failed to load expert data')
-    print(expert_data)
+
     observations = np.asarray(expert_data['observations'])
     actions = np.asarray(expert_data['actions'])
     actions = np.squeeze(actions)
-    if verbose:
+    if args.verbose:
         print('actions.shape', actions.shape)
         print('observations.shape', observations.shape)
 
@@ -86,17 +87,19 @@ def main():
     batch_size = 32
     training_steps = 100
 
-    tf_util.initialize()
     saver = tf.train.Saver()
 
     lowest_loss = float('inf')
+
+    initializer = tf.variables_initializer()
+
     for training_step in range(training_steps):
         indices = np.random.randint(observations.shape[0], size=batch_size)
         batch_actions = actions[indices]
         batch_observations = observations[indices]
 
-        with tf.Session():
-            session = get_session()
+        with tf.Session() as session:
+            session.run(initializer)
 
             _, loss = session.run([optim, loss],
                     feed_dict={actions_placeholder:batch_actions,
