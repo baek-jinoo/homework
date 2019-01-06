@@ -9,11 +9,11 @@ import tf_util
 
 class Model():
 
-    def __init__(self, action_dim, state_dim):
+    def __init__(self, action_dim, state_dim, layers=[60, 40]):
         self._action_dim = action_dim
         self._state_dim = state_dim
 
-        self._first_weight_dim = 60
+        self._first_weight_dim = layers[0]
         w1 = tf.get_variable(dtype=tf.float32,
                 shape=[self._state_dim, self._first_weight_dim],
                 name='w1',
@@ -23,7 +23,7 @@ class Model():
                 name='b1',
                 initializer=tf.constant_initializer(0.))
 
-        self._second_weight_dim = 40
+        self._second_weight_dim = layers[1]
         w2 = tf.get_variable(dtype=tf.float32,
                 shape=[self._first_weight_dim, self._second_weight_dim],
                 name='w2',
@@ -49,7 +49,7 @@ class Model():
         self.activations = [tf.nn.relu, tf.nn.relu, tf.math.sigmoid]
 
     def __call__(self, states_placeholder):
-        previous_layer = states_placeholder
+        previous_layer = states_placeholder.astype(np.float32)
         for weight, bias, activation in zip(self.weights, self.biases, self.activations):
             previous_layer = tf.matmul(previous_layer, weight) + bias
             if activation is not None:
@@ -99,11 +99,11 @@ def main():
     action_dim = actions.shape[-1]
     state_dim = observations.shape[-1]
 
-    model = Model(action_dim, state_dim)
+    model = Model(action_dim, state_dim, layers=[200, 100])
     optimizer = tf.train.AdamOptimizer()
 
-    batch_size = 32
-    training_steps = 100
+    batch_size = 512
+    training_steps = 10000
     for training_step in range(training_steps):
         indices = np.random.randint(observations.shape[0], size=batch_size)
         batch_actions = actions[indices]
@@ -112,7 +112,7 @@ def main():
         outputs = batch_actions
         loss, _ = train(model, inputs, outputs, optimizer)
         if training_step % 10 == 0:
-            print(f'{training_step} loss:', loss)
+            print(f'{training_step} loss:', loss.numpy())
 
 if __name__ == '__main__':
     main()
