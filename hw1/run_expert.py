@@ -9,7 +9,7 @@ Example usage:
 Author of this script and included expert policies: Jonathan Ho (hoj@openai.com)
 """
 
-import os
+kmport os
 import pickle
 import tensorflow as tf
 import numpy as np
