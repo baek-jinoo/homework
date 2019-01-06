@@ -51,6 +51,7 @@ class Model():
             previous_layer = tf.matmul(previous_layer, weight) + bias
             if i < len(self.weights) - 1:
                 previous_layer = tf.layers.batch_normalization(previous_layer, training=training)
+                previous_layer = tf.layers.dropout(previous_layer, rate=0.5)
             if activation is not None:
                 previous_layer = activation(previous_layer)
 
