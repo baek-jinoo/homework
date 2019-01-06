@@ -6,7 +6,6 @@ import os
 import numpy as np
 import tf_util
 
-
 class Model(tf.keras.Model):
 
     def __init__(self, action_dim, state_dim, layers=[60, 40]):
@@ -61,7 +60,6 @@ class Model(tf.keras.Model):
 
         output_layer = previous_layer
         return output_layer
-
 
 def loss(predicted_y, desired_y):
     return tf.reduce_mean(tf.square(predicted_y - desired_y))
