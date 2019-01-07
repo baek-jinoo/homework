@@ -49,7 +49,9 @@ class Model(tf.keras.Model):
         self.activations.append(None)
 
     def call(self, states_placeholder, training=True):
-        previous_layer = states_placeholder.astype(np.float32)
+        if isinstance(states_placeholder, np.ndarray):
+            states_placeholder = states_placeholder.astype(np.float32)
+        previous_layer = states_placeholder
         for i, (weight, bias, activation) in enumerate(zip(self.mlp_weights, self.biases, self.activations)):
             previous_layer = tf.matmul(previous_layer, weight) + bias
             if i < len(self.mlp_weights) - 1:
@@ -75,12 +77,64 @@ def train(model, inputs, outputs, optimizer):
             global_step=tf.train.get_or_create_global_step())
     return (current_loss, grads)
 
-def main():
+def print_graph(action_dim, state_dim, _, observations):
+    logdir = "./tb/"
+    writer = tf.contrib.summary.create_file_writer(logdir)
+    writer.set_as_default()
+
+    g_1 = tf.Graph()
+    with g_1.as_default():
+        model = Model(action_dim, state_dim, layers=[400, 200, 100])
+        optimizer = tf.train.AdamOptimizer(learning_rate=1e-5)
+
+        _ = model(tf.placeholder(dtype=tf.float32, shape=[None, observations.shape[-1]]))
+        with tf.Session() as sess:
+            writer = tf.summary.FileWriter("./tb/", sess.graph)
+            writer.close()
+
+def run_eager_train(action_dim, state_dim, actions, observations):
     tf.enable_eager_execution()
 
+    model = Model(action_dim, state_dim, layers=[400, 200, 100])
+    optimizer = tf.train.AdamOptimizer(learning_rate=1e-5)
+
+    global_step = tf.train.get_or_create_global_step()
+
+    logdir = "./tb/"
+    writer = tf.contrib.summary.create_file_writer(logdir)
+    writer.set_as_default()
+
+    batch_size = 2048
+    training_steps = 1000
+    losses = []
+    for training_step in range(training_steps):
+        with tf.contrib.summary.record_summaries_every_n_global_steps(10):
+
+            indices = np.random.randint(observations.shape[0], size=batch_size)
+            batch_actions = actions[indices]
+            batch_observations = observations[indices]
+            inputs = batch_observations
+            outputs = batch_actions
+            loss, _ = train(model, inputs, outputs, optimizer)
+            losses.append(loss.numpy())
+
+            tf.contrib.summary.scalar('loss', loss)
+            tf.contrib.summary.scalar('global_step', global_step)
+
+        if training_step % 100 == 0:
+            print(f'{training_step} loss:', loss.numpy())
+
+    #import tempfile
+    #losses_f = '[' + ','.join([str(x) for x in losses]) + ']'
+    #with tempfile.NamedTemporaryFile(delete=False) as f:
+    #    f.write(losses_f.encode('utf-8'))
+    #    f.close()
+
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('envname', type=str)
     parser.add_argument('--verbose', action='store_true')
+    parser.add_argument('--print_graph', action='store_true')
 
     args = parser.parse_args()
 
@@ -104,22 +158,10 @@ def main():
     action_dim = actions.shape[-1]
     state_dim = observations.shape[-1]
 
-    model = Model(action_dim, state_dim, layers=[400, 200, 100])
-    optimizer = tf.train.AdamOptimizer(learning_rate=1e-5)
-
-    batch_size = 2048
-    training_steps = 12000
-    losses = []
-    for training_step in range(training_steps):
-        indices = np.random.randint(observations.shape[0], size=batch_size)
-        batch_actions = actions[indices]
-        batch_observations = observations[indices]
-        inputs = batch_observations
-        outputs = batch_actions
-        loss, _ = train(model, inputs, outputs, optimizer)
-        losses.append(loss.numpy())
-        if training_step % 100 == 0:
-            print(f'{training_step} loss:', loss.numpy())
+    if args.print_graph:
+        print_graph(action_dim, state_dim, actions, observations)
+    else:
+        run_eager_train(action_dim, state_dim, actions, observations)
 
 if __name__ == '__main__':
     main()
