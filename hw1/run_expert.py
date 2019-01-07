@@ -16,6 +16,7 @@ import numpy as np
 import tf_util
 import gym
 import load_policy
+import tempfile
 
 def main():
     import argparse
@@ -37,10 +38,15 @@ def main():
 
         import gym
         env = gym.make(args.envname)
-        if args.render:
-            env.render()
-            #env.monitor.start('/tmp/cartpole-experiment-1', force=True)
         max_steps = args.max_timesteps or env.spec.timestep_limit
+
+        tempfile_name = None
+        if args.render:
+            f = tempfile.NamedTemporaryFile()
+            print('named temp file', f.name)
+            filename = f.name
+            f.close()
+            f = open(filename, 'ab')
 
         returns = []
         observations = []
@@ -59,7 +65,7 @@ def main():
                 totalr += r
                 steps += 1
                 if args.render:
-                    env.render()
+                    pickle.dump(env.render(mode='rgb_array'), f)
                 if steps % 100 == 0: print("%i/%i"%(steps, max_steps))
                 if steps >= max_steps:
                     print("%i/%i"%(steps, max_steps))
@@ -67,8 +73,7 @@ def main():
             returns.append(totalr)
 
         if args.render:
-            pass
-            #env.monitor.close()
+            f.close()
 
         print('returns', returns)
         print('mean return', np.mean(returns))
