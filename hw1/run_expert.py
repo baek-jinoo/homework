@@ -17,6 +17,8 @@ import tf_util
 import gym
 import load_policy
 import tempfile
+from gym import wrappers
+from mujoco_py.generated import const
 
 def main():
     import argparse
@@ -42,6 +44,10 @@ def main():
 
         tempfile_name = None
         if args.render:
+            env.render(mode='rgb_array')
+            env.unwrapped.viewer.cam.type = const.CAMERA_FIXED
+            env.unwrapped.viewer.cam.fixedcamid = 0
+
             f = tempfile.NamedTemporaryFile()
             print('named temp file', f.name)
             filename = f.name
@@ -51,6 +57,7 @@ def main():
         returns = []
         observations = []
         actions = []
+
         for i in range(args.num_rollouts):
             print('iter', i)
             obs = env.reset()
