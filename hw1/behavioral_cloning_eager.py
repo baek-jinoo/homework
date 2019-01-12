@@ -5,63 +5,7 @@ import argparse
 import os
 import numpy as np
 import tf_util
-
-class Model(tf.keras.Model):
-
-    def __init__(self, action_dim, state_dim, layers=[60, 40]):
-
-        super(Model, self).__init__()
-        self._action_dim = action_dim
-        self._state_dim = state_dim
-
-        previous_dim = self._state_dim
-        self.mlp_weights = []
-        self.biases = []
-        self.activations = []
-        for i, layer in enumerate(layers):
-            w = tf.get_variable(dtype=tf.float32,
-                    shape=[previous_dim, layer],
-                    name=f'w{i}',
-                    initializer=tf.contrib.layers.xavier_initializer())
-            self.mlp_weights.append(w)
-            setattr(self, f'w{i}', w)
-            b = tf.get_variable(dtype=tf.float32,
-                    shape=[layer],
-                    name=f'b{i}',
-                    initializer=tf.constant_initializer(0.))
-            self.biases.append(b)
-            setattr(self, f'b{i}', b)
-            self.activations.append(tf.nn.relu)
-            previous_dim = layer
-
-        w = tf.get_variable(dtype=tf.float32,
-                shape=[previous_dim, self._action_dim],
-                name=f'w{len(layers)}',
-                initializer=tf.contrib.layers.xavier_initializer())
-        self.mlp_weights.append(w)
-        setattr(self, f'w{len(layers)}', w)
-        b = tf.get_variable(dtype=tf.float32,
-                shape=[self._action_dim],
-                name=f'b{len(layers)}',
-                initializer=tf.constant_initializer(0.))
-        self.biases.append(b)
-        setattr(self, f'b{len(layers)}', b)
-        self.activations.append(None)
-
-    def call(self, states_placeholder, training=True):
-        if isinstance(states_placeholder, np.ndarray):
-            states_placeholder = states_placeholder.astype(np.float32)
-        previous_layer = states_placeholder
-        for i, (weight, bias, activation) in enumerate(zip(self.mlp_weights, self.biases, self.activations)):
-            previous_layer = tf.matmul(previous_layer, weight) + bias
-            if i < len(self.mlp_weights) - 1:
-                previous_layer = tf.layers.batch_normalization(previous_layer, training=training)
-                previous_layer = tf.layers.dropout(previous_layer, rate=0.5)
-            if activation is not None:
-                previous_layer = activation(previous_layer)
-
-        output_layer = previous_layer
-        return output_layer
+from cloning_model import CloningModel
 
 def loss(predicted_y, desired_y):
     return tf.reduce_mean(tf.square(predicted_y - desired_y))
@@ -84,7 +28,7 @@ def print_graph(action_dim, state_dim, _, observations):
 
     g_1 = tf.Graph()
     with g_1.as_default():
-        model = Model(action_dim, state_dim, layers=[400, 200, 100])
+        model = CloningModel(action_dim, state_dim, layers=[400, 200, 100])
         optimizer = tf.train.AdamOptimizer(learning_rate=1e-5)
 
         _ = model(tf.placeholder(dtype=tf.float32, shape=[None, observations.shape[-1]]))
@@ -92,10 +36,10 @@ def print_graph(action_dim, state_dim, _, observations):
             writer = tf.summary.FileWriter("./tb/", sess.graph)
             writer.close()
 
-def run_eager_train(action_dim, state_dim, actions, observations):
+def run_eager_train(action_dim, state_dim, actions, observations, envname):
     tf.enable_eager_execution()
 
-    model = Model(action_dim, state_dim, layers=[400, 200, 100])
+    model = CloningModel(action_dim, state_dim, layers=[400, 200, 100])
     optimizer = tf.train.AdamOptimizer(learning_rate=1e-5)
 
     global_step = tf.train.get_or_create_global_step()
@@ -107,6 +51,12 @@ def run_eager_train(action_dim, state_dim, actions, observations):
     batch_size = 2048
     training_steps = 1000
     losses = []
+
+    checkpoint_dir = f'./checkpoints_{envname}'
+    os.makedirs(checkpoint_dir, exist_ok=True)
+    checkpoint_prefix = os.path.join(checkpoint_dir, 'ckpt')
+
+    root = tf.train.Checkpoint(optimizer=optimizer, model=model)
     for training_step in range(training_steps):
         with tf.contrib.summary.record_summaries_every_n_global_steps(10):
 
@@ -123,12 +73,8 @@ def run_eager_train(action_dim, state_dim, actions, observations):
 
         if training_step % 100 == 0:
             print(f'{training_step} loss:', loss.numpy())
-
-    #import tempfile
-    #losses_f = '[' + ','.join([str(x) for x in losses]) + ']'
-    #with tempfile.NamedTemporaryFile(delete=False) as f:
-    #    f.write(losses_f.encode('utf-8'))
-    #    f.close()
+            #root.save(checkpoint_prefix)
+    root.save(checkpoint_prefix)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -161,7 +107,7 @@ def main():
     if args.print_graph:
         print_graph(action_dim, state_dim, actions, observations)
     else:
-        run_eager_train(action_dim, state_dim, actions, observations)
+        run_eager_train(action_dim, state_dim, actions, observations, args.envname)
 
 if __name__ == '__main__':
     main()

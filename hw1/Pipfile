@@ -9,7 +9,7 @@ mujoco-py = "==1.50.1.56"
 tensorflow-gpu = "*"
 numpy = "~=1.14.5"
 seaborn = "*"
-patchelf = "*"
+pyvirtualdisplay = "*"
 
 [dev-packages]
 
