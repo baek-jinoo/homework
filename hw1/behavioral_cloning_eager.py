@@ -49,14 +49,16 @@ def run_eager_train(action_dim, state_dim, actions, observations, envname):
     writer.set_as_default()
 
     batch_size = 2048
-    training_steps = 1000
+    training_steps = 800
     losses = []
 
     checkpoint_dir = f'./checkpoints_{envname}'
     os.makedirs(checkpoint_dir, exist_ok=True)
     checkpoint_prefix = os.path.join(checkpoint_dir, 'ckpt')
 
-    root = tf.train.Checkpoint(optimizer=optimizer, model=model)
+    root = tf.train.Checkpoint(optimizer=optimizer,
+            model=model,
+            optimizer_step=tf.train.get_or_create_global_step())
     for training_step in range(training_steps):
         with tf.contrib.summary.record_summaries_every_n_global_steps(10):
 
@@ -73,7 +75,7 @@ def run_eager_train(action_dim, state_dim, actions, observations, envname):
 
         if training_step % 100 == 0:
             print(f'{training_step} loss:', loss.numpy())
-            #root.save(checkpoint_prefix)
+            root.save(checkpoint_prefix)
     root.save(checkpoint_prefix)
 
 def main():

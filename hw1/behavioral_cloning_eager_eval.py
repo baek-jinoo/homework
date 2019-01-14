@@ -40,8 +40,8 @@ def main():
     model = CloningModel(action_dim, state_dim, [400, 200, 100])
     optimizer = tf.train.AdamOptimizer(learning_rate=1e-5)
 
-    #root = tf.train.Checkpoint(model=model, optimizer= optimizer)
-    #status = root.restore(tf.train.latest_checkpoint(checkpoint_dir))
+    root = tf.train.Checkpoint(model=model, optimizer= optimizer)
+    status = root.restore(tf.train.latest_checkpoint(checkpoint_dir))
 
     env = gym.make(args.envname)
     obs = env.reset()

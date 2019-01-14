@@ -2,7 +2,6 @@ import tensorflow as tf
 import numpy as np
 
 class CloningModel(tf.keras.Model):
-
     def __init__(self, action_dim, state_dim, layers=[60, 40]):
         super(CloningModel, self).__init__()
         self._action_dim = action_dim
