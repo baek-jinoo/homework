@@ -39,7 +39,10 @@ def print_graph(action_dim, state_dim, _, observations):
 def run_eager_train(action_dim, state_dim, actions, observations, envname):
     tf.enable_eager_execution()
 
-    model = CloningModel(action_dim, state_dim, layers=[400, 200, 100])
+    input_mean = np.mean(observations, axis=0)
+    input_std = np.std(observations, axis=0) + 1e-6
+
+    model = CloningModel(action_dim, state_dim, input_mean, input_std, layers=[400, 200, 100])
     optimizer = tf.train.AdamOptimizer(learning_rate=1e-5)
 
     global_step = tf.train.get_or_create_global_step()
@@ -48,8 +51,8 @@ def run_eager_train(action_dim, state_dim, actions, observations, envname):
     writer = tf.contrib.summary.create_file_writer(logdir)
     writer.set_as_default()
 
-    batch_size = 2048
-    training_steps = 800
+    batch_size = 4096
+    training_steps = 5000
     losses = []
 
     checkpoint_dir = f'./checkpoints_{envname}'
@@ -75,7 +78,10 @@ def run_eager_train(action_dim, state_dim, actions, observations, envname):
 
         if training_step % 100 == 0:
             print(f'{training_step} loss:', loss.numpy())
+        if training_step % 400 == 0:
             root.save(checkpoint_prefix)
+            print('saved checkpoint')
+
     root.save(checkpoint_prefix)
 
 def main():

@@ -4,6 +4,9 @@ import os
 from cloning_model import CloningModel
 import numpy as np
 import gym
+import tempfile
+import pickle
+from mujoco_py.generated import const
 
 def main():
     tf.enable_eager_execution()
@@ -11,6 +14,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('envname', type=str)
     parser.add_argument('--max_timesteps', type=int)
+    parser.add_argument('--render', action='store_true')
 
     args = parser.parse_args()
 
@@ -37,10 +41,11 @@ def main():
     print(checkpoint_dir)
     os.makedirs(checkpoint_dir, exist_ok=True)
     action_dim, state_dim = action_obs_dims_hack()
-    model = CloningModel(action_dim, state_dim, [400, 200, 100])
+    model = CloningModel(action_dim, state_dim, np.zeros(state_dim), np.zeros(state_dim), [400, 200, 100])
     optimizer = tf.train.AdamOptimizer(learning_rate=1e-5)
 
     root = tf.train.Checkpoint(model=model, optimizer= optimizer)
+    print(tf.train.latest_checkpoint(checkpoint_dir))
     status = root.restore(tf.train.latest_checkpoint(checkpoint_dir))
 
     env = gym.make(args.envname)
@@ -53,14 +58,33 @@ def main():
     accum_r = 0
     steps = 0
 
+    if args.render:
+        env.render(mode='rgb_array')
+        if 'reacher' not in args.envname.lower():
+            env.unwrapped.viewer.cam.type = const.CAMERA_FIXED
+            env.unwrapped.viewer.cam.fixedcamid = 0
+
+        f = tempfile.NamedTemporaryFile()
+        print('named temp file', f.name)
+        filename = f.name
+        f.close()
+        f = open(filename, 'ab')
+
     while not done:
         next_action = model(obs[None, :])
         obs, reward, done, _ = env.step(next_action)
         accum_r += reward
         steps += 1
+
+        if args.render:
+            pickle.dump(env.render(mode='rgb_array'), f)
         rewards.append(reward)
-        if steps % 10 == 0:
+        if steps % 40 == 0:
             print(f'{steps}/{max_steps}')
+            #print(next_action)
+
+    if args.render:
+        f.close()
 
     print('steps', steps)
     print('totalr', accum_r)

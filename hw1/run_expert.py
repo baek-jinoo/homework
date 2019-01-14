@@ -46,8 +46,9 @@ def main():
         tempfile_name = None
         if args.render:
             env.render(mode='rgb_array')
-            env.unwrapped.viewer.cam.type = const.CAMERA_FIXED
-            env.unwrapped.viewer.cam.fixedcamid = 0
+            if 'reacher' not in args.envname.lower():
+                env.unwrapped.viewer.cam.type = const.CAMERA_FIXED
+                env.unwrapped.viewer.cam.fixedcamid = 0
 
             f = tempfile.NamedTemporaryFile()
             print('named temp file', f.name)
