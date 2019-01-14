@@ -71,7 +71,7 @@ def main():
         f = open(filename, 'ab')
 
     while not done:
-        next_action = model(obs[None, :])
+        next_action = model.predict(obs[None, :])
         obs, reward, done, _ = env.step(next_action)
         accum_r += reward
         steps += 1

@@ -58,11 +58,9 @@ class CloningModel(tf.keras.Model):
         for i, (weight, bias, activation, batch_norm) in enumerate(zip(self.mlp_weights, self.biases, self.activations, self.batch_norms)):
             previous_layer = tf.matmul(previous_layer, weight) + bias
             if batch_norm is not None:
-                pass
-                #previous_layer = batch_norm(previous_layer, training=training)
+                previous_layer = batch_norm(previous_layer, training=training)
             if i < len(self.mlp_weights) - 1:
-                pass
-                #previous_layer = tf.layers.dropout(previous_layer, rate=0.5)
+                previous_layer = tf.layers.dropout(previous_layer, rate=0.5)
             if activation is not None:
                 previous_layer = activation(previous_layer)
 
