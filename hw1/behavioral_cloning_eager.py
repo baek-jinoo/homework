@@ -52,7 +52,7 @@ def run_eager_train(action_dim, state_dim, actions, observations, envname):
     writer.set_as_default()
 
     batch_size = 4096
-    training_steps = 5000
+    training_steps = 7000
     losses = []
 
     checkpoint_dir = f'./checkpoints_{envname}'
