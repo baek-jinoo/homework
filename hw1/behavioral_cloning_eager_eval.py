@@ -15,6 +15,7 @@ def main():
     parser.add_argument('envname', type=str)
     parser.add_argument('--max_timesteps', type=int)
     parser.add_argument('--render', action='store_true')
+    parser.add_argument('--num_rollouts', type=int)
 
     args = parser.parse_args()
 
@@ -49,45 +50,51 @@ def main():
     status = root.restore(tf.train.latest_checkpoint(checkpoint_dir))
 
     env = gym.make(args.envname)
-    obs = env.reset()
     max_steps = args.max_timesteps or env.spec.timestep_limit
 
-    done = False
-
     rewards = []
-    accum_r = 0
-    steps = 0
+    total_steps = []
+    for i in range(args.num_rollouts):
+        obs = env.reset()
 
-    if args.render:
-        env.render(mode='rgb_array')
-        if 'reacher' not in args.envname.lower():
-            env.unwrapped.viewer.cam.type = const.CAMERA_FIXED
-            env.unwrapped.viewer.cam.fixedcamid = 0
+        done = False
 
-        f = tempfile.NamedTemporaryFile()
-        print('named temp file', f.name)
-        filename = f.name
-        f.close()
-        f = open(filename, 'ab')
-
-    while not done:
-        next_action = model.predict(obs[None, :])
-        obs, reward, done, _ = env.step(next_action)
-        accum_r += reward
-        steps += 1
+        accum_r = 0
+        steps = 0
 
         if args.render:
-            pickle.dump(env.render(mode='rgb_array'), f)
-        rewards.append(reward)
-        if steps % 40 == 0:
-            print(f'{steps}/{max_steps}')
-            #print(next_action)
+            env.render(mode='rgb_array')
+            if 'reacher' not in args.envname.lower():
+                env.unwrapped.viewer.cam.type = const.CAMERA_FIXED
+                env.unwrapped.viewer.cam.fixedcamid = 0
 
-    if args.render:
-        f.close()
+            f = tempfile.NamedTemporaryFile()
+            print('named temp file', f.name)
+            filename = f.name
+            f.close()
+            f = open(filename, 'ab')
 
-    print('steps', steps)
-    print('totalr', accum_r)
+        while not done:
+            next_action = model.predict(obs[None, :])
+            obs, reward, done, _ = env.step(next_action)
+            accum_r += reward
+            steps += 1
+
+            if args.render:
+                pickle.dump(env.render(mode='rgb_array'), f)
+            if steps % 40 == 0:
+                print(f'{steps}/{max_steps}')
+                #print(next_action)
+
+        if args.render:
+            f.close()
+
+        rewards.append(accum_r)
+        total_steps.append(steps)
+        print('steps', steps)
+        print('totalr', accum_r)
+    print('rewards', rewards)
+    print('steps', total_steps)
     print('std:', np.std(rewards))
     print('mean:', np.mean(rewards))
 
