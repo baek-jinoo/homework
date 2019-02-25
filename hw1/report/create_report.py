@@ -46,8 +46,12 @@ def sanitize_data(data):
 
 def generate_report(data):
     print('about to generate report')
-    fig = 
-    pass
+    fig = plt.figure()
+
+    #xdata = np.array([0,1,2,3,4,5,6])/5
+    #sns.tsplot(time=xdata, data=data, color='r', linestyle='−')
+    plt.plot(data)
+    fig.savefig("foo.pdf", bbox_inches='tight')
 
 
 def main():
@@ -64,7 +68,7 @@ def main():
         data = np.asarray(data, dtype=np.float32)
         sanitized_data = sanitize_data(data)
 
-        generate_report(sanitize_data)
+        generate_report(sanitized_data)
 
 if __name__ == '__main__':
     main()
