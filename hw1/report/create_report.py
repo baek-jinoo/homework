@@ -3,20 +3,10 @@ from scipy import stats
 from scipy.stats import iqr
 import os
 import csv
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-files = ['hopper.csv', 'ant.csv']
-
-for csv_file_name in files:
-    print('======================')
-    print('processing filename', csv_file_name)
-    data = []
-    with open(os.path.dirname(os.path.realpath(__file__)) + '/' + csv_file_name) as csv_file:
-        csv_reader = csv.reader(csv_file, delimiter=',')
-        for row in csv_reader:
-            data.append(float(row[0]))
-
-    data = np.asarray(data, dtype=np.float32)
-
+def sanitize_data(data):
     print('len', len(data))
     print('mode', stats.mode(data))
     print('mean', np.mean(data))
@@ -31,8 +21,8 @@ for csv_file_name in files:
         q3 = z3 * std + mean
 
         current_iqr = iqr(data)
-        top_outlier_fence = q3 + 5.0 * current_iqr
-        lower_outlier_fence = q1  - 5.0 * current_iqr
+        top_outlier_fence = q3 + 10.0 * current_iqr
+        lower_outlier_fence = q1  - 10.0 * current_iqr
 
         print('current_iqr', current_iqr)
         print('top_outlier_fence', top_outlier_fence)
@@ -52,3 +42,29 @@ for csv_file_name in files:
     set_data = set(data)
     set_cleaned_data = set(cleaned_data)
     print('diff', set_data - set_cleaned_data)
+    return cleaned_data
+
+def generate_report(data):
+    print('about to generate report')
+    fig = 
+    pass
+
+
+def main():
+    files = ['hopper.csv', 'ant.csv']
+
+    for csv_file_name in files:
+        print('======================')
+        print('processing filename', csv_file_name)
+        data = []
+        with open(os.path.dirname(os.path.realpath(__file__)) + '/' + csv_file_name) as csv_file:
+            csv_reader = csv.reader(csv_file, delimiter=',')
+            for row in csv_reader:
+                data.append(float(row[0]))
+        data = np.asarray(data, dtype=np.float32)
+        sanitized_data = sanitize_data(data)
+
+        generate_report(sanitize_data)
+
+if __name__ == '__main__':
+    main()
