@@ -10,6 +10,7 @@ tensorflow-gpu = "*"
 numpy = "~=1.14.5"
 seaborn = "*"
 pyvirtualdisplay = "*"
+scipy = "*"
 
 [dev-packages]
 
