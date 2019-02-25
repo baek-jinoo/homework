@@ -1,47 +1,54 @@
 import numpy as np
-from scipy.stats import iqr
 from scipy import stats
+from scipy.stats import iqr
+import os
+import csv
 
-data = [4565.620452915602, 4758.999545733419, 4568.0374466954545, 4513.51721538055, 4414.53130322748, 4546.123647840348, 4584.765379613195, 4608.664467296275, 4666.7911264693885, 4775.9246942222235, 4458.546138970915, 4419.279132243781, 4457.129806101492, 4715.567375465351, 4817.027485209849, 4600.404640311983, 4666.9915060947915, 4492.249039094412, 4416.299756239144, 4768.721728736058, 4586.137600355743, 4789.933748942674, 4695.358342490957, 4660.297942090452, 4166.322394237718, 3937.6212353354053, 4296.9274161626445, 4319.911041104377, 4705.196502313392, 4487.575374097278, 4755.768009972708, 2765.8283380088924, 4665.782717525702, 4657.4281086315395, 4572.896081292085, 4697.390914773383, 4528.52227043138, 962.8766286886527, 4714.143664344019, 3768.861621121401, 4421.486707396079, 4702.776826390363, 1414.2334724116429, 3464.0413463760806, 4633.73245435501, 4707.869573710741, 4366.378761529922, 4716.761208054733, -2478710484.7646923, 4605.083774656472, 3871.77026162313, 4392.871866262002, 4069.4293567324403, 4320.282700966112, 4772.475725074175, 4588.358002392067, 4732.641204163353, 4776.559995678784, 4177.403950280943, 4388.610834891096]
+files = ['hopper.csv', 'ant.csv']
 
-data = np.asarray(data)
-print('data', data)
+for csv_file_name in files:
+    print('======================')
+    print('processing filename', csv_file_name)
+    data = []
+    with open(os.path.dirname(os.path.realpath(__file__)) + '/' + csv_file_name) as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=',')
+        for row in csv_reader:
+            data.append(float(row[0]))
 
-print('len', len(data))
-print('mode', stats.mode(data))
-print('mean', np.mean(data))
-print('iqr', iqr(data))
-print('std', data.std())
-z1 = -0.67
-z3 = 0.67
-mean = data.mean()
-std = data.std()
-q1 = z1 * std + mean
-q3 = z3 * std + mean
+    data = np.asarray(data, dtype=np.float32)
 
-print('q1', q1)
-print('q3', q3)
+    print('len', len(data))
+    print('mode', stats.mode(data))
+    print('mean', np.mean(data))
+    print('std', data.std())
 
-def remove_outside_quartile(data):
-    z1 = -0.67
-    z3 = 0.67
-    mean = data.mean()
-    std = data.std()
-    q1 = z1 * std + mean
-    q3 = z3 * std + mean
-    new_data = [datum for datum in data if datum <= q3 and datum >= q1]
-    return np.asarray(new_data)
+    def remove_outside_quartile(data):
+        z1 = -0.67
+        z3 = 0.67
+        mean = data.mean()
+        std = data.std()
+        q1 = z1 * std + mean
+        q3 = z3 * std + mean
 
-print('cleaned')
-cleaned_data = remove_outside_quartile(data)
-print(cleaned_data)
-print('len', len(cleaned_data))
+        current_iqr = iqr(data)
+        top_outlier_fence = q3 + 5.0 * current_iqr
+        lower_outlier_fence = q1  - 5.0 * current_iqr
 
-print('mode', stats.mode(cleaned_data))
-print('mean', cleaned_data.mean())
-print('iqr', iqr(cleaned_data))
-print('std', cleaned_data.std())
+        print('current_iqr', current_iqr)
+        print('top_outlier_fence', top_outlier_fence)
+        print('lower_outlier_fence', lower_outlier_fence)
 
-set_data = set(data)
-set_cleaned_data = set(cleaned_data)
-print('diff', set_data - set_cleaned_data)
+        new_data = [datum for datum in data if datum <= top_outlier_fence and datum >= lower_outlier_fence]
+        return np.asarray(new_data)
+
+    print('cleaned')
+    cleaned_data = remove_outside_quartile(data)
+    print('len', len(cleaned_data))
+
+    print('mode', stats.mode(cleaned_data))
+    print('mean', cleaned_data.mean())
+    print('std', cleaned_data.std())
+
+    set_data = set(data)
+    set_cleaned_data = set(cleaned_data)
+    print('diff', set_data - set_cleaned_data)
